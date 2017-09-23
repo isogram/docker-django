@@ -1,0 +1,51 @@
+version: '2'
+services:
+  web:
+    container_name: shankly-web
+    restart: always
+    build: ./web/
+    expose:
+      - "8000"
+    links:
+      - postgres:postgres
+      - redis:redis
+    env_file: env
+    working_dir: /data/web/app
+    volumes:
+      - ./web:/data/web
+    command: /usr/bin/gunicorn app.wsgi:application -w 2 -b :8000
+
+  nginx:
+    container_name: shankly-nginx
+    restart: always
+    build: ./nginx/
+    ports:
+      - "80:80"
+    volumes_from:
+      - web
+    links:
+      - web:web
+
+  postgres:
+    container_name: shankly-postgres
+    restart: always
+    image: postgres:latest
+    volumes:
+      - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./backups/postgresql:/backup
+      - ./postgres/data:/var/lib/postgresql/data
+    env_file:
+      - env
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+
+  redis:
+    container_name: shankly-redis
+    restart: always
+    image: redis:latest
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
